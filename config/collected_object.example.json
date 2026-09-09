@@ -1,0 +1,9 @@
+[
+    [
+        {"asset_path": "../assets/golden_retriever.glb", "action_name": "Run", "bbox_name": "golden_retriever__Run.json"},
+        {"asset_path": "../assets/golden_retriever.glb", "action_name": "Walk", "bbox_name": "golden_retriever__Walk.json"}
+    ],
+    [
+        {"asset_path": "../assets/character.blend", "action_name": "Wave", "bbox_name": "character__Wave.json"}
+    ]
+]

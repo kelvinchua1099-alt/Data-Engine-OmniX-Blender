@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.blend1
+*.blend2
+.DS_Store
+
+# runtime outputs at the repository root (demo outputs under assets/ are kept)
+/logs/
+/render_output/
+/object_data/

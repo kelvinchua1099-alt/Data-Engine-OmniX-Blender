@@ -1,0 +1,19 @@
+[
+  [
+    {
+      "asset_path": "fox/fox.blend",
+      "action_name": "Walk",
+      "bbox_name": "fox__Walk.json"
+    },
+    {
+      "asset_path": "fox/fox.blend",
+      "action_name": "Survey",
+      "bbox_name": "fox__Survey.json"
+    },
+    {
+      "asset_path": "fox/fox.blend",
+      "action_name": "Run",
+      "bbox_name": "fox__Run.json"
+    }
+  ]
+]
