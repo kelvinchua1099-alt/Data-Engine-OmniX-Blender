@@ -46,6 +46,7 @@ DEFAULT_CONFIG = {
     "MIN_VALID_CAMERA_RATIO": 0.9,
     "STATIC_TRAJECTORY_PROB": 0.5,
     "INDOOR_PROB_OUTDOOR_SCENE": 0.05,
+    "RANDOM_OBJECT_SCALE_RANGE": (0.2, 5.0),   # UE: random.uniform(0.2, 5); use ~(0.8, 1.25) for realistic sizes
 }
 
 
@@ -154,7 +155,7 @@ def construct_scene(bvh, scene_info, object_data, bbox_folder, anno_base_path, e
         anno_index = sequence_index + expect_sequence_num * sequence_group_index
         nav_location, nav_radius = sample_nav_region(bvh, world_bound_min, world_bound_max, density_map, cell_size)
 
-        random_scale = random.uniform(0.2, 5)
+        random_scale = random.uniform(*cfg["RANDOM_OBJECT_SCALE_RANGE"])
         random_scales = [s * random_scale for s in imported_scales]
         success = False
 

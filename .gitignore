@@ -8,3 +8,13 @@ __pycache__/
 /logs/
 /render_output/
 /object_data/
+
+# large downloaded / generated assets of the forest case (reproduce with
+# assets/download_forest_assets.py and scripts/build_forest_env.py)
+/assets/polyhaven/
+/assets/env/
+/assets/case_forest/**/images/
+/assets/case_forest/**/vertex_data/
+/assets/case_forest/**/faces.bin
+/assets/case_forest/*.blend
+/assets/case_forest/logs/

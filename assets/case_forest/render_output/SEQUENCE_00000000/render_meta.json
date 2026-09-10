@@ -1,0 +1,58 @@
+{
+  "layout": "per_camera",
+  "units": "meters",
+  "resolution": [
+    960,
+    540
+  ],
+  "engine": "CYCLES",
+  "samples": 48,
+  "warmup_frames": 4,
+  "max_frame": 25,
+  "frames": [
+    12
+  ],
+  "cameras": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+  ],
+  "view_layer": "ViewLayer",
+  "channels": {
+    "rgb": [
+      "ViewLayer.Combined.R",
+      "ViewLayer.Combined.G",
+      "ViewLayer.Combined.B"
+    ],
+    "depth": "ViewLayer.Depth.Z",
+    "mask": "ViewLayer.Object Index.X",
+    "all": [
+      "ViewLayer.Combined.A",
+      "ViewLayer.Combined.B",
+      "ViewLayer.Combined.G",
+      "ViewLayer.Combined.R",
+      "ViewLayer.Depth.Z",
+      "ViewLayer.Noisy Image.A",
+      "ViewLayer.Noisy Image.B",
+      "ViewLayer.Noisy Image.G",
+      "ViewLayer.Noisy Image.R",
+      "ViewLayer.Object Index.X"
+    ]
+  },
+  "depth_convention": "planar camera-space z, meters",
+  "mask_convention": "object pass index (>0.5 = dynamic foreground)",
+  "flip_x": false
+}

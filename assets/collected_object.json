@@ -2,8 +2,8 @@
   [
     {
       "asset_path": "fox/fox.blend",
-      "action_name": "Walk",
-      "bbox_name": "fox__Walk.json"
+      "action_name": "Run",
+      "bbox_name": "fox__Run.json"
     },
     {
       "asset_path": "fox/fox.blend",
@@ -12,8 +12,25 @@
     },
     {
       "asset_path": "fox/fox.blend",
+      "action_name": "Walk",
+      "bbox_name": "fox__Walk.json"
+    }
+  ],
+  [
+    {
+      "asset_path": "soldier/soldier.blend",
+      "action_name": "Idle",
+      "bbox_name": "soldier__Idle.json"
+    },
+    {
+      "asset_path": "soldier/soldier.blend",
       "action_name": "Run",
-      "bbox_name": "fox__Run.json"
+      "bbox_name": "soldier__Run.json"
+    },
+    {
+      "asset_path": "soldier/soldier.blend",
+      "action_name": "Walk",
+      "bbox_name": "soldier__Walk.json"
     }
   ]
 ]

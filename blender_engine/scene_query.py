@@ -8,6 +8,7 @@ import math
 import random
 
 import bpy
+import numpy as np
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 
@@ -16,6 +17,48 @@ from .common.log import log, warn
 
 SKY_KEYWORDS = ("sky", "dome", "background", "hdri", "atmosphere", "skybox")
 DYNAMIC_PROP = "omnix_dynamic"
+IGNORE_PROP = "omnix_no_collision"      # set on objects that should not take part in traces (e.g. grass)
+DEFAULT_MAX_TRIS = 20000                 # per unique mesh; denser meshes are decimated for the BVH
+
+
+def _evaluated_tris(obj, depsgraph):
+    """(verts (N,3) float64 local space, tris (M,3) int) of the evaluated mesh."""
+    ev = obj.evaluated_get(depsgraph)
+    me = ev.to_mesh()
+    try:
+        n = len(me.vertices)
+        if n == 0:
+            return np.zeros((0, 3)), np.zeros((0, 3), dtype=np.int64)
+        co = np.empty(n * 3)
+        me.vertices.foreach_get("co", co)
+        me.calc_loop_triangles()
+        m = len(me.loop_triangles)
+        tris = np.empty(m * 3, dtype=np.int64)
+        me.loop_triangles.foreach_get("vertices", tris)
+        return co.reshape(n, 3), tris.reshape(m, 3)
+    finally:
+        ev.to_mesh_clear()
+
+
+def _decimated_tris(obj, depsgraph, max_tris):
+    """Evaluated geometry of `obj`, collapsed to about `max_tris` triangles via a temporary Decimate."""
+    verts, tris = _evaluated_tris(obj, depsgraph)
+    if len(tris) <= max_tris:
+        return verts, tris
+    me = bpy.data.meshes.new("omnix_tmp_collision")
+    me.from_pydata(verts.tolist(), [], tris.tolist())
+    tmp = bpy.data.objects.new("omnix_tmp_collision", me)
+    bpy.context.scene.collection.objects.link(tmp)
+    try:
+        mod = tmp.modifiers.new("dec", "DECIMATE")
+        mod.decimate_type = "COLLAPSE"
+        mod.ratio = max(0.01, max_tris / len(tris))
+        dg = bpy.context.evaluated_depsgraph_get()
+        out = _evaluated_tris(tmp, dg)
+    finally:
+        bpy.data.objects.remove(tmp, do_unlink=True)
+        bpy.data.meshes.remove(me)
+    return out
 
 
 def world_box(obj):
@@ -38,7 +81,7 @@ def iter_static_mesh_objects(scene):
     for obj in scene.objects:
         if obj.type != "MESH" or obj.hide_render:
             continue
-        if obj.get(DYNAMIC_PROP):
+        if obj.get(DYNAMIC_PROP) or obj.get(IGNORE_PROP):
             continue
         yield obj
 
@@ -55,7 +98,10 @@ def _box_bvh(box):
 
 
 class SceneBVH:
-    def __init__(self, scene=None, depsgraph=None, exclude_sky=True):
+    """One BVH over all static geometry (world space). Unique meshes are evaluated once, decimated to
+    `max_tris_per_mesh` when denser, and instanced per object with numpy transforms."""
+
+    def __init__(self, scene=None, depsgraph=None, exclude_sky=True, max_tris_per_mesh=DEFAULT_MAX_TRIS):
         self.scene = scene or bpy.context.scene
         dg = depsgraph or bpy.context.evaluated_depsgraph_get()
         objs = list(iter_static_mesh_objects(self.scene))
@@ -65,30 +111,41 @@ class SceneBVH:
 
         self.object_bounds = []   # [(name, Box)]
         self.sky_objects = []
-        verts, polys = [], []
+        cache = {}                # mesh data name -> (local verts, tris)
+        vert_chunks, tri_chunks = [], []
+        offset = 0
         for o, b in boxes:
             if exclude_sky and is_sky_like(o, b, median):
                 self.sky_objects.append(o.name)
                 continue
             self.object_bounds.append((o.name, b))
-            ev = o.evaluated_get(dg)
-            me = ev.to_mesh()
-            if me is None:
+            # objects with modifiers may evaluate differently per instance -> cache by (mesh, modifiers)
+            key = (o.data.name, tuple((m.type, m.name) for m in o.modifiers))
+            if key not in cache:
+                cache[key] = _decimated_tris(o, dg, max_tris_per_mesh)
+            lv, lt = cache[key]
+            if len(lt) == 0:
                 continue
-            mw = ev.matrix_world
-            base = len(verts)
-            verts.extend((mw @ v.co).to_tuple() for v in me.vertices)
-            polys.extend(tuple(base + i for i in p.vertices) for p in me.polygons)
-            ev.to_mesh_clear()
+            mw = np.array(o.matrix_world, dtype=np.float64)
+            wv = lv @ mw[:3, :3].T + mw[:3, 3]
+            vert_chunks.append(wv)
+            tri_chunks.append(lt + offset)
+            offset += len(wv)
 
-        self.n_verts, self.n_polys = len(verts), len(polys)
-        self.bvh = BVHTree.FromPolygons(verts, polys, all_triangles=False) if polys else None
+        if tri_chunks:
+            verts = np.concatenate(vert_chunks, axis=0)
+            tris = np.concatenate(tri_chunks, axis=0)
+            self.n_verts, self.n_polys = len(verts), len(tris)
+            self.bvh = BVHTree.FromPolygons(verts.tolist(), tris.tolist(), all_triangles=True)
+        else:
+            self.n_verts = self.n_polys = 0
+            self.bvh = None
         if self.object_bounds:
             self.bounds = Box.from_points([c for _, b in self.object_bounds for c in (b.min, b.max)])
         else:
             self.bounds = Box((-1, -1, -1), (1, 1, 1))
-        log(f"SceneBVH: {len(self.object_bounds)} static objects, {self.n_polys} polygons, "
-            f"skipped sky-like: {self.sky_objects}")
+        log(f"SceneBVH: {len(self.object_bounds)} static objects, {len(cache)} unique meshes, "
+            f"{self.n_polys} triangles, skipped sky-like: {self.sky_objects}")
 
     # ------------------------------------------------------------------ primitives
     def ray_cast(self, origin, direction, distance):

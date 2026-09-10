@@ -107,6 +107,30 @@ render_output/DEBUG/SEQUENCE_00000000/
 `run_construct.py` accepts `--config overrides.json` to change any key of `construct_scene.DEFAULT_CONFIG`
 (frame count, camera ranges, noise, number of cameras ...).
 
+## 2b. Reproducing the forest case (photoreal example)
+
+```bash
+python3 assets/download_forest_assets.py                  # ~1 GB of CC0 Poly Haven assets + the Mixamo soldier
+$BLENDER -b -P scripts/build_forest_env.py -- --out assets/env/forest_clearing.blend --preview /tmp/forest.png
+$BLENDER -b -P scripts/make_asset.py -- --src assets/fox/Fox.glb --dst assets/fox/fox.blend --height 0.7 \
+    --bbox_dir assets/collected_bbox_info --object_json assets/collected_object.json
+$BLENDER -b -P scripts/make_asset.py -- --src assets/soldier/Soldier.glb --dst assets/soldier/soldier.blend --height 1.8 \
+    --bbox_dir assets/collected_bbox_info --object_json assets/collected_object.json --actions Idle,Run,Walk
+$BLENDER -b assets/env/forest_clearing.blend -P scripts/run_scene_setup.py -- --cell_count 12 --output assets/case_forest/logs/scene_info.json
+$BLENDER -b assets/env/forest_clearing.blend -P scripts/run_construct.py -- --scene_info assets/case_forest/logs/scene_info.json \
+    --object_file assets/collected_object.json --bbox_folder assets/collected_bbox_info \
+    --anno_base assets/case_forest/render_output --expect_sequence_num 2 --config config/construct_forest.json
+$BLENDER -b assets/env/forest_clearing.blend -P scripts/run_render.py -- --sequence_dir assets/case_forest/render_output/SEQUENCE_00000000 \
+    --width 960 --height 540 --samples 48
+```
+
+`scripts/build_forest_env.py` assembles a 90 m forest clearing: displaced ground with a tiled PBR material,
+HDRI sky, ~90 scanned trees (mid LODs) in a ring around a 7 m clearing, rocks and logs, ferns and a few
+thousand grass clumps as hair particles (grass and ferns are tagged `omnix_no_collision`). `SceneBVH`
+decimates every unique mesh to 20k triangles for the collision BVH, so the 2M-triangle scene is analysed in
+seconds. `config/construct_forest.json` narrows the random object scale to 0.8-1.25 so characters keep
+realistic sizes (the UE default is 0.2-5).
+
 ## 3. Tools (system python: numpy, OpenEXR, opencv-python, scikit-learn)
 
 ```bash
